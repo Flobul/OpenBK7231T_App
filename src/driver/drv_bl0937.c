@@ -24,6 +24,10 @@
 #define HW_TIMER_ID 0
 #else
 
+#ifdef PLATFORM_BL602
+#include "bl_gpio.h"
+#endif
+
 #endif
 
 #define DEFAULT_VOLTAGE_CAL 0.13253012048f
@@ -61,6 +65,19 @@ static void HlwCf1Interrupt(void* context) {
 static void HlwCfInterrupt(void* context) {
 	tls_clr_gpio_irq_status(GPIO_HLW_CF_pin);
 	g_p_pulses++;
+}
+
+#elif PLATFORM_BL602
+static void HlwCf1Interrupt(void* context) {
+    // Adjust the function implementation according to the BL602 GPIO handling
+    // For example, use bl_gpio_input_get() to get the pin value
+    g_vc_pulses++;
+}
+
+static void HlwCfInterrupt(void* context) {
+    // Adjust the function implementation according to the BL602 GPIO handling
+    // For example, use bl_gpio_input_get() to get the pin value
+    g_p_pulses++;
 }
 
 #else
@@ -104,6 +121,10 @@ void BL0937_Shutdown_Pins()
 #elif PLATFORM_BEKEN
 	gpio_int_disable(GPIO_HLW_CF1);
 	gpio_int_disable(GPIO_HLW_CF);
+#elif PLATFORM_BL602
+        bl_gpio_irq_disable(GPIO_HLW_CF1_pin);
+        bl_gpio_irq_disable(GPIO_HLW_CF_pin);
+
 #endif
 }
 
@@ -146,7 +167,19 @@ void BL0937_Init_Pins() {
 
 	HAL_PIN_Setup_Input_Pullup(GPIO_HLW_CF);
 
-#if PLATFORM_W600
+#ifdef PLATFORM_BL602
+	// Initialize BL602 GPIO pins
+	bl_gpio_enable_input(GPIO_HLW_CF1_pin, BL_GPIO_PUPD_PULL_UP, BL_GPIO_INT_BOTH_EDGES);
+	bl_gpio_enable_input(GPIO_HLW_CF_pin, BL_GPIO_PUPD_PULL_UP, BL_GPIO_INT_BOTH_EDGES);
+
+	// Register interrupts for BL602
+	bl_gpio_register_handler(GPIO_HLW_CF1_pin, HlwCf1Interrupt, NULL);
+	bl_gpio_register_handler(GPIO_HLW_CF_pin, HlwCfInterrupt, NULL);
+
+	// Enable GPIO interrupts
+	bl_gpio_enable_irq(GPIO_HLW_CF1_pin);
+	bl_gpio_enable_irq(GPIO_HLW_CF_pin);
+#elif PLATFORM_W600
 	tls_gpio_isr_register(GPIO_HLW_CF_pin, HlwCfInterrupt, NULL);
 	tls_gpio_irq_enable(GPIO_HLW_CF_pin, WM_GPIO_IRQ_TRIG_FALLING_EDGE);
 #elif PLATFORM_BEKEN
